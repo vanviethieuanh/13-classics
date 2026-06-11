@@ -4,8 +4,10 @@ __pycache__/
 .venv/
 uv.lock
 
+data/raw/*
 data/interim/*
 data/structured/*
+!data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/structured/.gitkeep
 
