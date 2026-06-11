@@ -1,0 +1,18 @@
+# Known place / state names per classic
+# Format: book_id -> list of place names
+chunqiu:
+  - 鲁
+  - 齐
+  - 晋
+  - 楚
+  - 秦
+  - 宋
+  - 卫
+  - 郑
+  - 陈
+  - 蔡
+  - 曹
+  - 吴
+  - 越
+  - 燕
+  - 周

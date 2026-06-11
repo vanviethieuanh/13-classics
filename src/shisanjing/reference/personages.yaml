@@ -1,0 +1,24 @@
+# Known historical figures per classic
+# Format: book_id -> list of names
+lunyu:
+  - 孔子
+  - 曾子
+  - 子路
+  - 子贡
+  - 颜回
+  - 子夏
+  - 子张
+  - 宰我
+  - 冉有
+  - 季路
+  - 有子
+
+xiaojing:
+  - 孔子
+  - 曾子
+
+mengzi:
+  - 孟子
+  - 梁惠王
+  - 齐宣王
+  - 滕文公

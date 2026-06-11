@@ -1,0 +1,249 @@
+version: '3'
+
+vars:
+  PYTHON: uv run python
+  MODULE: shisanjing
+  DATA_DIR: data
+
+tasks:
+  default:
+    desc: Process all 13 classics and validate
+    deps: [process-all, validate-all]
+
+  setup:
+    desc: Install all dependencies (including dev)
+    cmds:
+      - uv sync
+      - uv sync --group dev
+
+  # --- Extract ---
+
+  extract-pdfs:
+    desc: Extract text from all raw PDFs
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} extract --all"
+    sources:
+      - "{{.DATA_DIR}}/raw/**/*.pdf"
+    generates:
+      - "{{.DATA_DIR}}/interim/**/*.txt"
+
+  # --- Per-book pipelines ---
+
+  process-lunyu:
+    desc: Process 论语
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process lunyu"
+    sources:
+      - "{{.DATA_DIR}}/raw/lunyu.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/lunyu.json"
+
+  process-xiaojing:
+    desc: Process 孝经
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process xiaojing"
+    sources:
+      - "{{.DATA_DIR}}/raw/xiaojing.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/xiaojing.json"
+
+  process-mengzi:
+    desc: Process 孟子
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process mengzi"
+    sources:
+      - "{{.DATA_DIR}}/raw/mengzi.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/mengzi.json"
+
+  process-shijing:
+    desc: Process 诗经
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process shijing"
+    sources:
+      - "{{.DATA_DIR}}/raw/shijing.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/shijing.json"
+
+  process-yijing:
+    desc: Process 周易
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process yijing"
+    sources:
+      - "{{.DATA_DIR}}/raw/yijing.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/yijing.json"
+
+  process-erya:
+    desc: Process 尔雅
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process erya"
+    sources:
+      - "{{.DATA_DIR}}/raw/erya.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/erya.json"
+
+  process-shangshu:
+    desc: Process 尚书
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process shangshu"
+    sources:
+      - "{{.DATA_DIR}}/raw/shangshu.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/shangshu.json"
+
+  process-zhouli:
+    desc: Process 周礼
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process zhouli"
+    sources:
+      - "{{.DATA_DIR}}/raw/zhouli.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/zhouli.json"
+
+  process-yili:
+    desc: Process 仪礼
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process yili"
+    sources:
+      - "{{.DATA_DIR}}/raw/yili.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/yili.json"
+
+  process-liji:
+    desc: Process 礼记
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process liji"
+    sources:
+      - "{{.DATA_DIR}}/raw/liji.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/liji.json"
+
+  process-zuozhuan:
+    desc: Process 左传
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process zuozhuan"
+    sources:
+      - "{{.DATA_DIR}}/raw/zuozhuan.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/zuozhuan.json"
+
+  process-gongyang:
+    desc: Process 公羊传
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process gongyang"
+    sources:
+      - "{{.DATA_DIR}}/raw/gongyang.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/gongyang.json"
+
+  process-guliang:
+    desc: Process 谷梁传
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} process guliang"
+    sources:
+      - "{{.DATA_DIR}}/raw/guliang.pdf"
+    generates:
+      - "{{.DATA_DIR}}/structured/guliang.json"
+
+  # --- Phase groups ---
+
+  phase-1:
+    desc: "Phase 1 — 论语 + 孝经"
+    deps: [process-lunyu, process-xiaojing]
+
+  phase-2:
+    desc: "Phase 2 — 孟子"
+    deps: [process-mengzi]
+
+  phase-3:
+    desc: "Phase 3 — 诗经"
+    deps: [process-shijing]
+
+  phase-4:
+    desc: "Phase 4 — 周易 + 尔雅"
+    deps: [process-yijing, process-erya]
+
+  phase-5:
+    desc: "Phase 5 — 尚书"
+    deps: [process-shangshu]
+
+  phase-6:
+    desc: "Phase 6 — 周礼 + 仪礼 + 礼记"
+    deps: [process-zhouli, process-yili, process-liji]
+
+  phase-7:
+    desc: "Phase 7 — 左传 + 公羊传 + 谷梁传"
+    deps: [process-zuozhuan, process-gongyang, process-guliang]
+
+  process-all:
+    desc: Process all 13 classics
+    deps:
+      - process-lunyu
+      - process-xiaojing
+      - process-mengzi
+      - process-shijing
+      - process-yijing
+      - process-erya
+      - process-shangshu
+      - process-zhouli
+      - process-yili
+      - process-liji
+      - process-zuozhuan
+      - process-gongyang
+      - process-guliang
+
+  # --- Validation ---
+
+  validate-all:
+    desc: Validate all structured JSON outputs
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} validate --all"
+
+  # --- Testing ---
+
+  test:
+    desc: Run all tests
+    cmds:
+      - uv run pytest tests/
+
+  test-cov:
+    desc: Run tests with coverage report
+    cmds:
+      - uv run pytest tests/ --cov
+
+  # --- Lint & format ---
+
+  lint:
+    desc: Lint source code with ruff
+    cmds:
+      - uv run ruff check src/ tests/
+
+  format:
+    desc: Format source code with ruff
+    cmds:
+      - uv run ruff format src/ tests/
+
+  format-check:
+    desc: Check formatting without changes
+    cmds:
+      - uv run ruff format --check src/ tests/
+
+  # --- Housekeeping ---
+
+  clean:
+    desc: Remove all generated data and caches
+    cmds:
+      - rm -rf {{.DATA_DIR}}/interim/* {{.DATA_DIR}}/structured/*
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+      - rm -rf .pytest_cache .ruff_cache htmlcov .coverage
+
+  shell:
+    desc: Open Python shell
+    cmds:
+      - "{{.PYTHON}}"
+
+  info:
+    desc: Print project info
+    cmds:
+      - "{{.PYTHON}} -m {{.MODULE}} info"

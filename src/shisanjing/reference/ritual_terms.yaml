@@ -1,0 +1,19 @@
+# Ritual and technical terms per classic
+# Format: book_id -> list of terms
+lunyu:
+  - 仁
+  - 礼
+  - 义
+  - 智
+  - 信
+  - 孝
+  - 悌
+  - 忠
+  - 恕
+  - 中庸
+
+xiaojing:
+  - 孝
+  - 悌
+  - 忠
+  - 敬
