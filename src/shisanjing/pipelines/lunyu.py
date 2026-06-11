@@ -72,8 +72,32 @@ def _is_chinese(text: str) -> bool:
     return cjk / len(stripped) > 0.4
 
 
+def _is_vietnamese(text: str) -> bool:
+    stripped = text.strip()
+    if not stripped or stripped.isdigit():
+        return False
+    if _is_chinese(stripped):
+        return False
+    # Has Vietnamese diacritics or Latin + Vietnamese-specific chars
+    vn = sum(1 for c in stripped if ord(c) > 127 and not RE_CJK.match(c))
+    latin = sum(1 for c in stripped if c.isascii() and c.isalpha())
+    return vn > 0 or latin > 0
+
+
 def _has_vietnamese_header(text: str) -> bool:
     return bool(RE_PAGE_HDR.search(text)) or text.strip().isdigit()
+
+
+def _classify_vn_line(line: str, prev_type: str | None = None) -> str | None:
+    if not _is_vietnamese(line):
+        return None
+    if line.startswith("(Chú thích:") or line.startswith("(Lời bàn:"):
+        return "notes"
+    if " viết:" in line or line.startswith("Tử viết:") or "viết:" in line[:20]:
+        return "sino"
+    if " nói:" in line or line.startswith("Tử nói:") or "nói:" in line[:20]:
+        return "trans"
+    return prev_type
 
 
 def _clean_chinese_text(text: str) -> str:
@@ -126,23 +150,44 @@ class LunyuPipeline(BasePipeline):
         chapters: list[dict] = []
         current_chapter: dict | None = None
         current_section: dict | None = None
-        buffer: list[str] = []
+        zh_buffer: list[str] = []
+        vn_scratch: list[str] = []
 
         def flush_section():
-            nonlocal current_section, buffer
-            if current_section is None or not buffer:
-                buffer = []
+            nonlocal current_section, zh_buffer, vn_scratch
+            if current_section is None:
                 return
-            raw = "".join(buffer)
-            zh_text = _clean_chinese_text(raw)
+            zh_raw = "".join(zh_buffer)
+            zh_text = _clean_chinese_text(zh_raw)
             if len(zh_text) > 5:
                 zh_text = _strip_speaker_prefix(zh_text)
                 current_section["text"] = zh_text
-                current_section["speaker"] = _extract_speaker(raw)
+                current_section["speaker"] = _extract_speaker(zh_raw)
+                # Classify Vietnamese lines
+                sino = []
+                trans = []
+                notes = []
+                prev = None
+                for ln in vn_scratch:
+                    t = _classify_vn_line(ln, prev)
+                    if t == "sino":
+                        sino.append(ln)
+                    elif t == "trans":
+                        trans.append(ln)
+                    elif t == "notes":
+                        notes.append(ln)
+                    prev = t
+                if sino:
+                    current_section["sino_text"] = " ".join(sino)
+                if trans:
+                    current_section["translation"] = " ".join(trans)
+                if notes:
+                    current_section["commentary"] = " ".join(notes)
                 if current_chapter is not None:
                     current_chapter["sections"].append(current_section)
             current_section = None
-            buffer = []
+            zh_buffer = []
+            vn_scratch = []
 
         for line in lines:
             stripped = line.strip()
@@ -172,22 +217,43 @@ class LunyuPipeline(BasePipeline):
             m = RE_SECNUM.match(stripped)
             if m:
                 flush_section()
-                current_section = {"section": stripped, "text": "", "speaker": None}
+                current_section = {
+                    "section": stripped,
+                    "text": "",
+                    "speaker": None,
+                    "sino_text": None,
+                    "translation": None,
+                    "commentary": None,
+                }
+                zh_buffer = []
+                vn_scratch = []
                 continue
 
-            if current_section is not None and _is_chinese(stripped):
-                buffer.append(stripped)
-                continue
+            if current_section is None and current_chapter is not None:
+                if _is_chinese(stripped):
+                    current_section = {
+                        "section": None,
+                        "text": "",
+                        "speaker": None,
+                        "sino_text": None,
+                        "translation": None,
+                        "commentary": None,
+                    }
+                    zh_buffer = []
+                    vn_scratch = []
 
-            if current_chapter is not None and _is_chinese(stripped):
-                if current_section is None:
-                    current_section = {"section": None, "text": "", "speaker": None}
-                buffer.append(stripped)
+            if current_section is not None:
+                if _is_chinese(stripped):
+                    zh_buffer.append(stripped)
+                elif _is_vietnamese(stripped):
+                    vn_scratch.append(stripped)
 
         flush_section()
         return chapters
 
     def annotate(self, structured: list[dict]) -> list[dict]:
+        from shisanjing.extractors.clean import normalize_entries
+
         results: list[dict] = []
         for ch in structured:
             for sec in ch.get("sections", []):
@@ -199,10 +265,13 @@ class LunyuPipeline(BasePipeline):
                     "section": sec.get("section"),
                     "text": sec["text"],
                     "speaker": sec.get("speaker"),
+                    "sino_text": sec.get("sino_text"),
+                    "translation": sec.get("translation"),
+                    "commentary": sec.get("commentary"),
                     "entities": [],
                     "quotes": [],
                     "tokens": [],
                     "notes": [],
                 }
                 results.append(entry)
-        return results
+        return normalize_entries(results)
